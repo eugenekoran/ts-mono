@@ -74,12 +74,19 @@ describe("recentInputMessages (existing behavior)", () => {
     expect(recentInputMessages(input, defaults)).toEqual(input);
   });
 
-  it("shows only the trailing assistant message when input ends with one", () => {
-    // NOTE: slice(-1) means the walk examines only the assistant message and
-    // stops — trailing-assistant events show just that message. Pinned as-is.
+  it("includes the trailing assistant message with the turn before it", () => {
+    // e.g. an assistant prefill or compaction message: the walk continues
+    // past it to the user/system messages that precede it
     const assistant = msg("assistant");
     const input = [msg("system"), msg("user"), assistant];
-    expect(recentInputMessages(input, defaults)).toEqual([assistant]);
+    expect(recentInputMessages(input, defaults)).toEqual(input);
+  });
+
+  it("stops at the previous assistant turn behind a trailing assistant", () => {
+    const user = msg("user");
+    const assistant = msg("assistant");
+    const input = [msg("user"), msg("assistant"), user, assistant];
+    expect(recentInputMessages(input, defaults)).toEqual([user, assistant]);
   });
 
   it("stops at a user message that is a tool call result", () => {
