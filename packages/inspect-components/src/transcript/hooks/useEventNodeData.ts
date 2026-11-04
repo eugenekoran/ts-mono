@@ -5,6 +5,7 @@
 
 import { useMemo } from "react";
 
+import { computeModelOutputHistory } from "../modelOutputHistory";
 import { buildToolLabels, scopeMessageLabels } from "../transform/labels";
 import type { EventNode, EventNodeContext, EventType } from "../types";
 
@@ -40,13 +41,19 @@ export const useEventNodeData = (
       extraContext?.messageLabels
     );
     const toolLabels = buildToolLabels(nodeFeed.events, messageLabels);
+    // From the whole sample, not just this feed: a lane's first call can
+    // continue a conversation whose earlier outputs are in another lane.
+    const modelOutputHistory = computeModelOutputHistory(
+      allEvents ?? nodeFeed.events
+    );
     return {
       ...extraContext,
       messageLabels,
       retryAttempts,
+      modelOutputHistory,
       ...(toolLabels ? { toolLabels } : {}),
     };
-  }, [nodeFeed.events, extraContext, retryAttempts]);
+  }, [nodeFeed.events, extraContext, retryAttempts, allEvents]);
 
   return { eventNodes, defaultCollapsedIds, eventNodeContext };
 };

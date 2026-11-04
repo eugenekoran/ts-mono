@@ -8,6 +8,7 @@ import {
 } from "@tsmono/inspect-common/testing";
 import type { ChatMessage } from "@tsmono/inspect-common/types";
 
+import type { EarlierOutputs } from "./modelOutputHistory";
 import { recentInputMessages } from "./recentInputMessages";
 
 // Fixture shapes mirror a real codex 0.147.0 / gpt-5.6-sol eval log: a
@@ -74,12 +75,17 @@ describe("recentInputMessages (existing behavior)", () => {
     expect(recentInputMessages(input, defaults)).toEqual(input);
   });
 
-  it("shows only the trailing assistant message when input ends with one", () => {
-    // NOTE: slice(-1) means the walk examines only the assistant message and
-    // stops — trailing-assistant events show just that message. Pinned as-is.
+  it("includes a trailing assistant message with the turn before it", () => {
     const assistant = msg("assistant");
     const input = [msg("system"), msg("user"), assistant];
-    expect(recentInputMessages(input, defaults)).toEqual([assistant]);
+    expect(recentInputMessages(input, defaults)).toEqual(input);
+  });
+
+  it("stops at the previous assistant turn behind a trailing assistant", () => {
+    const user = msg("user");
+    const assistant = msg("assistant");
+    const input = [msg("user"), msg("assistant"), user, assistant];
+    expect(recentInputMessages(input, defaults)).toEqual([user, assistant]);
   });
 
   it("stops at a user message that is a tool call result", () => {
@@ -252,5 +258,76 @@ describe("recentInputMessages (Multi-Agent V2 fork boundary)", () => {
     });
     const input = [msg("system"), sys, msg("user")];
     expect(recentInputMessages(input, defaults)).toEqual(input);
+  });
+});
+
+const generated = (...messages: ChatMessage[]): EarlierOutputs => {
+  const ids = new Set(messages.map((m) => m.id));
+  return { any: ids.size > 0, includes: (id) => ids.has(id) };
+};
+
+describe("recentInputMessages (with earlier model outputs)", () => {
+  it("shows a first call's whole input, few-shot assistant messages included", () => {
+    const input = [msg("system"), msg("user"), msg("assistant"), msg("user")];
+    expect(
+      recentInputMessages(input, { ...defaults, earlierOutputs: generated() })
+    ).toEqual(input);
+  });
+
+  it("stops at the assistant message an earlier call generated", () => {
+    const output = msg("assistant");
+    const user = msg("user");
+    const input = [msg("system"), msg("user"), output, user];
+    expect(
+      recentInputMessages(input, {
+        ...defaults,
+        earlierOutputs: generated(output),
+      })
+    ).toEqual([user]);
+  });
+
+  it("walks past authored assistant messages to the generated one", () => {
+    const output = msg("assistant");
+    const turn = [msg("user"), msg("assistant"), msg("user"), msg("assistant")];
+    const input = [msg("system"), output, ...turn];
+    expect(
+      recentInputMessages(input, {
+        ...defaults,
+        earlierOutputs: generated(output),
+      })
+    ).toEqual(turn);
+  });
+
+  it("skips results a tool event shows and stops at the call's generator", () => {
+    const output = testAssistantMessage({ id: `m${nextId++}` });
+    const user = msg("user");
+    const input = [msg("user"), output, msg("tool"), user];
+    expect(
+      recentInputMessages(input, {
+        ...defaults,
+        hasToolEvents: true,
+        earlierOutputs: generated(output),
+      })
+    ).toEqual([user]);
+  });
+
+  it("falls back to roles when no input assistant message is a known output", () => {
+    const earlier = msg("assistant");
+    const user = msg("user");
+    const input = [msg("user"), msg("assistant"), user];
+    expect(
+      recentInputMessages(input, {
+        ...defaults,
+        earlierOutputs: generated(earlier),
+      })
+    ).toEqual([user]);
+  });
+
+  it("falls back to roles when an assistant message has no id", () => {
+    const user = msg("user");
+    const input = [msg("user"), testAssistantMessage(), user];
+    expect(
+      recentInputMessages(input, { ...defaults, earlierOutputs: generated() })
+    ).toEqual([user]);
   });
 });

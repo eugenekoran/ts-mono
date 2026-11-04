@@ -26,6 +26,7 @@ import { RetryChip } from "./event/RetryChip";
 import { StopReasonBadge } from "./event/StopReasonBadge";
 import { formatTiming, formatTitle, isCancelError } from "./event/utils";
 import styles from "./ModelEventView.module.css";
+import { earlierOutputsFor } from "./modelOutputHistory";
 import { recentInputMessages } from "./recentInputMessages";
 import { retryAttemptKey } from "./timeline/retryGrouping";
 import { EventNode, EventNodeContext, EventPanelCallbacks } from "./types";
@@ -96,9 +97,15 @@ export const ModelEventView: FC<ModelEventViewProps> = ({
       toolEventIds: context?.inputShownElsewhere
         ? undefined
         : context?.toolEventIds,
+      earlierOutputs: earlierOutputsFor(
+        context?.modelOutputHistory,
+        successEvent
+      ),
     });
   }, [
     event,
+    successEvent,
+    context?.modelOutputHistory,
     context?.hasToolEvents,
     context?.toolEventIds,
     context?.inputShownElsewhere,
