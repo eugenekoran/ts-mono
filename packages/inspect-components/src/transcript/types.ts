@@ -35,6 +35,7 @@ import type {
 } from "../chat/tools/browserActionUtils";
 
 import type { MakeCiteUrl } from "./citeReferences";
+import type { ModelOutputHistory } from "./modelOutputHistory";
 import type { SentinelStep, ToolSentinels } from "./transform/toolSentinels";
 import { SPAN_BEGIN, STEP, TYPE_SUBTASK, TYPE_TOOL } from "./transform/utils";
 
@@ -306,6 +307,8 @@ export interface EventNodeContext {
   makeCiteUrl?: MakeCiteUrl;
   /** Sentinel steps with no tool to render in, keyed by the node that hosts the step's row. */
   standaloneSentinels?: Map<string, SentinelStep>;
+  /** Which model event generated each output message, so a model event's summary can start after the input message an earlier call generated. */
+  modelOutputHistory?: ModelOutputHistory;
   /** Retry attempts paired to their successful ModelEvent via `retryAttemptKey(event)`. `ModelEventView` reads from this to render the inline retry chip and swap bodies between attempts. */
   retryAttempts?: Map<string, ModelEvent[]>;
   selfAnnotation?: ToolAnnotation;
