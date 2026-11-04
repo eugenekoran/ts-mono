@@ -35,7 +35,7 @@ export function recentInputMessages(
       offset = -1;
     }
 
-    for (const msg of input.slice(offset).reverse()) {
+    for (const msg of input.slice(0, offset).reverse()) {
       if (
         (msg.role === "user" && !msg.tool_call_id) ||
         msg.role === "system" ||
